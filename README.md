@@ -33,6 +33,12 @@ The context that wrote the code never reviews or merges it. Same principle as hu
 
 Chain multiple items - each gets its own PR, processed in order. Item N+1 doesn't start until item N merges.
 
+**Wrap in `/loop` to run hands-free across a long queue:**
+```bash
+/loop /pr-loop 42 57 91
+```
+The loop waits for review and merge subagents to finish before advancing — no polling. A fallback timer (20–30 min) wakes it if a notification is missed. The loop ends automatically once all items are merged or handed off.
+
 ---
 
 ## How it works
