@@ -1,6 +1,6 @@
 # /pr-loop
 
-> A Claude Code skill that drives work items through a full multi-agent PR pipeline — autonomously.
+> A Claude Code skill that drives work items through a full multi-agent PR pipeline - autonomously.
 
 **branch → implement → gates → PR → 2 independent reviews → fix every nit → re-review → human merge**
 
@@ -31,7 +31,7 @@ The context that wrote the code never reviews or merges it. Same principle as hu
 /pr-loop "refactor payment module #88" "add retry logic #91"
 ```
 
-Chain multiple items — each gets its own PR, processed in order. Item N+1 doesn't start until item N merges.
+Chain multiple items - each gets its own PR, processed in order. Item N+1 doesn't start until item N merges.
 
 ---
 
@@ -53,7 +53,7 @@ No hardcoded assumptions. Adapts to each project's conventions.
 - Spins off follow-up issues for out-of-scope items (no scope creep)
 
 ### 2. Local gates
-Runs exactly what your project requires — tests, linter, type-check, build. All green before pushing.
+Runs exactly what your project requires - tests, linter, type-check, build. All green before pushing.
 
 ### 3. PR
 - Commit format from your project rules
@@ -63,19 +63,19 @@ Runs exactly what your project requires — tests, linter, type-check, build. Al
 ### 4. Two independent reviews (parallel)
 Two separate subagents with no shared context with the author:
 
-**`pr-code-reviewer`** — structured review covering:
+**`pr-code-reviewer`** - structured review covering:
 - Security vulnerabilities
 - Correctness and edge cases
 - Performance implications
 - Maintainability and readability
 
-**`pr-validator`** — empirical review:
+**`pr-validator`** - empirical review:
 - Actually runs the gates
 - Probes the change's documented claims
 - Verifies behaviour matches the PR description
 
 ### 5. Fix *everything*
-Every finding gets addressed — including nits. Nothing is silently dropped. If a reviewer marks something "no change needed," the author either makes the improvement or records the deliberate decision in code/PR comments.
+Every finding gets addressed - including nits. Nothing is silently dropped. If a reviewer marks something "no change needed," the author either makes the improvement or records the deliberate decision in code/PR comments.
 
 ### 6. Re-review loop
 Both reviewers run again on the updated PR. Loops until:
