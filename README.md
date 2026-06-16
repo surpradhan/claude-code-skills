@@ -16,7 +16,7 @@
 | **Reviewer × 2** | Independent security/correctness/perf review + empirical gate validation |
 | **Merger** *(opt-in)* | Re-verifies everything, squash-merges, cleans up |
 
-The context that wrote the code never reviews or merges it. Same principle as human PR etiquette — enforced by design.
+The context that wrote the code never reviews or merges it. Same principle as human PR etiquette - enforced by design.
 
 ---
 
@@ -37,7 +37,7 @@ Chain multiple items - each gets its own PR, processed in order. Item N+1 doesn'
 ```bash
 /loop /pr-loop 42 57 91
 ```
-The loop waits for review and merge subagents to finish before advancing — no polling. A fallback timer (20–30 min) wakes it if a notification is missed. The loop ends automatically once all items are merged or handed off.
+The loop waits for review and merge subagents to finish before advancing - no polling. A fallback timer (20–30 min) wakes it if a notification is missed. The loop ends automatically once all items are merged or handed off.
 
 ---
 
