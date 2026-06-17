@@ -1,6 +1,6 @@
 ---
 description: Drive one or more work items through a full multi-agent PR pipeline (branch → implement → gates → PR → 2 independent reviews → fix every nit → re-review → human merge, or opt-in autonomous merge). Requires GitHub remote and the `gh` CLI.
-argument-hint: <issue> # / task description> [, <next item> …] [autonomous-merge]
+argument-hint: <issue # / task description> [, <next item> …] [autonomous-merge]
 ---
 
 # /pr-loop
