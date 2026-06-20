@@ -46,7 +46,7 @@ For each work item:
    ```
    git fetch origin
    git merge --no-commit --no-ff origin/<default-branch>
-   git merge --abort
+   git merge --abort 2>/dev/null || true   # no-op if already up to date
    ```
    If conflicts exist, STOP and surface them to the user; do not attempt to
    auto-resolve non-trivial conflicts.
