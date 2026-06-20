@@ -1,5 +1,5 @@
 ---
-description: Drive one or more work items through a full multi-agent PR pipeline (branch → implement → gates → PR → 2 independent reviews → fix every nit → re-review → human merge, or opt-in autonomous merge). Requires GitHub remote and the `gh` CLI.
+description: Drive one or more work items through a full multi-agent PR pipeline (pre-flight → branch → conflict check → implement → gates → PR → 2 independent reviews → fix every nit → re-review → CI → human merge, or opt-in autonomous merge). Requires GitHub remote and the `gh` CLI.
 argument-hint: <issue # / task description> [, <next item> …] [autonomous-merge]
 ---
 
@@ -35,18 +35,31 @@ guess project policy.**
 
 For each work item:
 
-1. **Ground.** Re-read the issue/spec (`gh issue view <n>` if it's an issue) and
+1. **Pre-flight.** If the issue is ambiguous about scope, acceptance criteria, or
+   approach, STOP and ask the user to clarify before writing any code.
+2. **Ground.** Re-read the issue/spec (`gh issue view <n>` if it's an issue) and
    the actual code paths it touches before writing anything.
-2. **Branch.** Create a fresh git worktree on a meaningfully-named branch off the
+3. **Branch.** Create a fresh git worktree on a meaningfully-named branch off the
    default branch (per the project's convention). Never push an auto-generated
    slug branch name.
-3. **Implement** the change, matching surrounding code and the issue's scope.
+4. **Conflict check.** Verify the fresh branch merges cleanly before writing any code:
+   ```
+   git fetch origin
+   git merge --no-commit --no-ff origin/<default-branch>
+   git merge --abort 2>/dev/null || true   # no-op if already up to date
+   ```
+   If conflicts exist, STOP and surface them to the user; do not attempt to
+   auto-resolve non-trivial conflicts.
+5. **Implement** the change, matching surrounding code and the issue's scope.
    Resist scope creep; spin off a follow-up issue for out-of-scope items.
-4. **Local gates.** Run exactly what the project requires (e.g. tests + linter,
+   **For large changes** (touching >3 files or requiring a design decision): push
+   an early draft PR (`gh pr create --draft`) to get directional feedback before
+   full implementation. Re-run the conflict check before marking the draft ready.
+6. **Local gates.** Run exactly what the project requires (e.g. tests + linter,
    plus a build step if relevant files changed). All green before pushing.
-5. **Push & open a PR.** Use the project's commit format.
+7. **Push & open a PR.** Use the project's commit format.
    Reference the issue (`Closes #n`) in the PR body. Title per the project's commit format.
-6. **Two independent reviews.** Spawn TWO separate review subagents in parallel
+8. **Two independent reviews.** Spawn TWO separate review subagents in parallel
    (separate contexts from you, the author):
    - **pr-code-reviewer** — structured security/correctness/perf/maintainability review;
    - **pr-validator** — PR review **and** actually runs the gates + empirically
@@ -55,16 +68,23 @@ For each work item:
    `pr-validator`, and `pr-merger` are Claude Code subagent types; if they aren't
    available in your environment, spawn general-purpose agents with the same
    instructions.)
-7. **Fix every finding — including nits.** Nothing is ignored. For a finding a
+9. **Fix every finding — including nits.** Nothing is ignored. For a finding a
    reviewer marks "no change needed," either make the clean improvement or record
    the deliberate decision in code/PR; do not silently drop it.
-8. **Re-review.** Re-run BOTH review agents on the updated PR until both return a
-   clean approve with zero actionable items and no new findings. **Cap: 3 rounds.**
-   If items still surface after 3 rounds, PAUSE and ask the user.
-9. **Merge step — depends on merge authority (see §2).**
-10. **Advance.** Update the local default branch (`git pull --ff-only`), confirm the
-    merge landed and the issue closed, remove any stray worktrees, update any
-    project memory/changelog if one exists, post a one-line status, then move to the next item.
+10. **Re-review.** Re-run BOTH review agents on the updated PR until both return a
+    clean approve with zero actionable items and no new findings. **Cap: 3 rounds.**
+    If items still surface after 3 rounds, PAUSE and ask the user.
+11. **CI.** Wait for CI to go green. If CI fails, retry the failing job once. If it
+    fails again, inspect the logs before assuming flakiness; fix real failures. If
+    a job fails a second time and the failure looks environmental (infra error,
+    unrelated test, network timeout), STOP and surface it to the user rather than
+    retrying indefinitely.
+12. **Merge step — depends on merge authority (see §2).**
+13. **Advance.** Update the local default branch (`git pull --ff-only`), confirm the
+    merge landed and the issue closed, remove any stray worktrees. Search for
+    changelog files (`find . -maxdepth 3 -iname 'CHANGELOG*' -o -iname 'CHANGES*'`)
+    or any path the project's CONTRIBUTING/README designates for release notes;
+    update if one exists. Post a one-line status, then move to the next item.
 
 ## 2. Merge authority
 
@@ -98,6 +118,6 @@ The context that wrote the code never reviews or merges it.
 ## 5. Pacing (when invoked via `/loop`)
 
 If wrapped in `/loop`, self-pace: the review/merge subagents are harness-tracked
-and wake the loop on completion, so use a long fallback heartbeat (1200–1800s)
+and wake the loop on completion, so use a long fallback heartbeat (1200–1800 s)
 rather than polling. End the loop (no further wakeup) once every item in
 `$ARGUMENTS` is merged or handed off.
