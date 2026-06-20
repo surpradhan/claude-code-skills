@@ -2,7 +2,7 @@
 
 > A Claude Code skill that drives work items through a full multi-agent PR pipeline - autonomously.
 
-**branch → implement → gates → PR → 2 independent reviews → fix every nit → re-review → human merge**
+**pre-flight → branch → conflict check → implement → gates → PR → 2 independent reviews → fix every nit → re-review → CI → human merge**
 
 ---
 
@@ -37,7 +37,7 @@ Chain multiple items - each gets its own PR, processed in order. Item N+1 doesn'
 ```bash
 /loop /pr-loop 42 57 91
 ```
-The loop waits for review and merge subagents to finish before advancing - no polling. A fallback timer (20–30 min) wakes it if a notification is missed. The loop ends automatically once all items are merged or handed off.
+The loop waits for review and merge subagents to finish before advancing - no polling. A fallback heartbeat (1200–1800 s) wakes it if a notification is missed. The loop ends automatically once all items are merged or handed off.
 
 ---
 
@@ -52,21 +52,26 @@ Before writing a single line, `/pr-loop` reads your project's contribution rules
 
 No hardcoded assumptions. Adapts to each project's conventions.
 
-### 1. Implement
-- Re-reads the issue / spec in full
-- Creates a properly named branch off the default branch in a fresh git worktree
+### 1. Pre-flight & ground
+If the issue is ambiguous about scope, acceptance criteria, or approach, `/pr-loop` stops and asks for clarification before writing any code. Once clear, it re-reads the full issue and the code paths it touches.
+
+### 2. Branch & conflict check
+Creates a properly named branch in a fresh git worktree, then verifies the branch merges cleanly with the default branch (`git merge --no-commit --no-ff`) before writing a single line. Surfaces conflicts to the user rather than auto-resolving.
+
+### 3. Implement
 - Implements the change, matching surrounding code style
+- For large changes (>3 files or a design decision): opens a draft PR early for directional feedback, re-checks for conflicts before marking it ready
 - Spins off follow-up issues for out-of-scope items (no scope creep)
 
-### 2. Local gates
+### 4. Local gates
 Runs exactly what your project requires - tests, linter, type-check, build. All green before pushing.
 
-### 3. PR
+### 5. PR
 - Commit format from your project rules
 - PR body references the issue (`Closes #n`)
 - Title per the project's commit format
 
-### 4. Two independent reviews (parallel)
+### 6. Two independent reviews (parallel)
 Two separate subagents with no shared context with the author:
 
 **`pr-code-reviewer`** - structured review covering:
@@ -80,10 +85,10 @@ Two separate subagents with no shared context with the author:
 - Probes the change's documented claims
 - Verifies behaviour matches the PR description
 
-### 5. Fix *everything*
+### 7. Fix *everything*
 Every finding gets addressed - including nits. Nothing is silently dropped. If a reviewer marks something "no change needed," the author either makes the improvement or records the deliberate decision in code/PR comments.
 
-### 6. Re-review loop
+### 8. Re-review loop
 Both reviewers run again on the updated PR. Loops until:
 - ✅ Zero actionable items
 - ✅ Zero new findings  
@@ -91,7 +96,10 @@ Both reviewers run again on the updated PR. Loops until:
 
 **Cap: 3 rounds.** If items still surface after round 3, the loop pauses and asks you.
 
-### 7. Merge
+### 9. CI
+Waits for CI to go green. Retries a failing job once, inspects logs before assuming flakiness, surfaces persistent or environmental failures to the user rather than retrying indefinitely.
+
+### 10. Merge
 **Default (safe):** stops at hand-off once CI is green and both reviews are clean. Reports PR link and status. A human merges.
 
 **`autonomous-merge` (opt-in):** only activates if you explicitly request it AND your project permits agent merges. A separate merger agent re-verifies everything before squash-merging.
