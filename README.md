@@ -190,7 +190,7 @@ The author context never reviews or merges. Always.
 | `/pr-validator` | `pr-validator.md` | Empirical review: runs gates, probes claims, checks tests |
 | `/pr-merger` | `pr-merger.md` | Re-verifies everything independently before squash-merge (opt-in) |
 
-In normal use, the reviewers and merger are invoked automatically by `/pr-loop`. They also support standalone use: `pr-code-reviewer` and `pr-validator` take `<PR number>,<worktree path>`; `pr-merger` takes `<PR number>,<branch name>,<worktree path>[,REVIEWS_CERTIFIED]`. See each file's `argument-hint` for the exact format.
+In normal use, the reviewers and merger are invoked automatically by `/pr-loop`. They also support standalone use: `pr-code-reviewer` and `pr-validator` take `<PR number>,<worktree path>`; `pr-merger` takes `<PR number>,<branch name>,<worktree path>,REVIEWS_CERTIFIED` (the `REVIEWS_CERTIFIED` token is required — pr-merger refuses without it). See each file's `argument-hint` for the exact format.
 
 ---
 

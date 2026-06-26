@@ -1,5 +1,5 @@
 ---
-description: Empirical PR validation subagent for the pr-loop pipeline. Runs the project's gates, probes the change's stated claims, and reviews the PR from a test-first perspective — independent from the author and the code reviewer contexts.
+description: Empirical PR validation subagent for the pr-loop pipeline. Runs the project's gates, probes the change's stated claims, and reviews the PR from a test-first perspective — in a separate context from both the author and the pr-code-reviewer.
 argument-hint: <PR number>,<worktree path>
 ---
 
@@ -34,7 +34,13 @@ Standard gate sequence (adapt to project):
 
 If a gate fails: report it, attempt to diagnose the failure (is it pre-existing on main, or introduced by this branch?), and continue running remaining gates. Do not stop at the first failure.
 
-**Pre-existing failure check:** if a gate fails, check out the default branch to a unique temp path: `git worktree add ${TMPDIR:-/tmp}/pr-base-check-<repo-slug>-<n> origin/<default-branch>`, run the gate there, then remove the temp worktree with `git worktree remove ${TMPDIR:-/tmp}/pr-base-check-<repo-slug>-<n> --force`. Use the repo name slug and PR number in place of `<repo-slug>` and `<n>` to avoid collisions when multiple validators run across repos in parallel. If the gate also fails on the base, mark the failure as PRE-EXISTING. A pre-existing failure is still a failure — note it, but distinguish it from a regression.
+**Pre-existing failure check:** if a gate fails, resolve the default branch and check it out to a unique temp path in a single invocation to avoid variable-persistence issues across tool calls:
+```
+DEFAULT=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name') && \
+  SLUG=$(gh repo view --json nameWithOwner --jq '.nameWithOwner | gsub("/"; "-")') && \
+  git worktree add "${TMPDIR:-/tmp}/pr-base-check-${SLUG}-<n>" "origin/$DEFAULT"
+```
+Run the gate there, then remove the temp worktree: `git worktree remove "${TMPDIR:-/tmp}/pr-base-check-${SLUG}-<n>" --force`. Substitute the PR number for `<n>`. If the gate also fails on the base, mark the failure as PRE-EXISTING. A pre-existing failure is still a failure — note it, but distinguish it from a regression.
 
 ## 3. Probe the PR's claims
 
@@ -75,7 +81,7 @@ ACTION: REQUIRED | OPTIONAL | NO_CHANGE_NEEDED
 
 After gates, claims, and test review:
 
-**VALIDATED** — all gates pass, all verifiable claims confirmed, no REQUIRED test findings.
+**VALIDATED** — all gates pass, all verifiable claims confirmed, no REQUIRED test findings. A PR with no runnable gates and all UNVERIFIABLE claims (e.g. a pure documentation PR in a repo with no build system) also returns VALIDATED — include a note in the output explaining that no gate or claim verification was possible.
 
 **VALIDATED_WITH_PREEXISTING_FAILURES** — all gates that are not pre-existing failures pass, all verifiable claims confirmed, no REQUIRED test findings. Pre-existing failures are noted but do not block this verdict. The orchestrator should surface them to the user for awareness.
 
