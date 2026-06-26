@@ -72,7 +72,7 @@ A finding tagged NO_CHANGE_NEEDED still counts toward the verdict. Any BLOCKER o
 
 After all findings, output one of:
 
-**APPROVE** — zero BLOCKER or MAJOR findings were identified, all NITs and MINORs listed above.
+**APPROVE** — zero BLOCKER or MAJOR findings. All MINOR and NIT findings above are noted but do not block this verdict.
 
 **REQUEST_CHANGES** — one or more BLOCKER or MAJOR findings. List them explicitly. Do not approve with unresolved blockers.
 

@@ -34,7 +34,7 @@ Standard gate sequence (adapt to project):
 
 If a gate fails: report it, attempt to diagnose the failure (is it pre-existing on main, or introduced by this branch?), and continue running remaining gates. Do not stop at the first failure.
 
-**Pre-existing failure check:** if a gate fails, check out the default branch to a unique temp path: `git worktree add /tmp/pr-base-check-<n> origin/<default-branch>`, run the gate there, then remove the temp worktree with `git worktree remove /tmp/pr-base-check-<n> --force`. Use the PR number in place of `<n>` to avoid collisions when multiple validators run in parallel. If the gate also fails on the base, mark the failure as PRE-EXISTING. A pre-existing failure is still a failure — note it, but distinguish it from a regression.
+**Pre-existing failure check:** if a gate fails, check out the default branch to a unique temp path: `git worktree add ${TMPDIR:-/tmp}/pr-base-check-<repo-slug>-<n> origin/<default-branch>`, run the gate there, then remove the temp worktree with `git worktree remove ${TMPDIR:-/tmp}/pr-base-check-<repo-slug>-<n> --force`. Use the repo name slug and PR number in place of `<repo-slug>` and `<n>` to avoid collisions when multiple validators run across repos in parallel. If the gate also fails on the base, mark the failure as PRE-EXISTING. A pre-existing failure is still a failure — note it, but distinguish it from a regression.
 
 ## 3. Probe the PR's claims
 
@@ -63,7 +63,7 @@ Focus only on test quality (can the test fail? does it test the real code?), tes
 - Does the test coverage match the scope of the change? A new code path with no test is a finding.
 - Are there edge cases in the PR description that have no corresponding test?
 
-Report findings using the same format as pr-code-reviewer (see pr-code-reviewer.md §3 for severity level definitions: BLOCKER / MAJOR / MINOR / NIT):
+Report findings using the same severity levels as pr-code-reviewer — **BLOCKER** (must fix before merge), **MAJOR** (should fix before merge), **MINOR** (fix if easy or file a follow-up), **NIT** (small; fix it anyway) — in this format:
 ```
 [SEVERITY] TEST <file>:<line>
 <description>

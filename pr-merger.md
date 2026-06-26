@@ -9,7 +9,7 @@ argument-hint: <PR number>,<branch name>,<worktree path>[,REVIEWS_CERTIFIED]
 
 **You only merge when all conditions are met.** If anything is off, you refuse, explain why, and hand back to the user. A refused merge is a correct outcome, not a failure.
 
-You will be given a PR number, branch name, worktree path, and optional signals in `$ARGUMENTS`. Arguments are comma-separated to handle paths with spaces: `<PR number>,<branch name>,<worktree path>[,<signals>]`. Example: `42,fix/auth-timeout,/Users/me/projects/my repo/worktrees/pr-42,REVIEWS_CERTIFIED`. Parse by splitting on the first three commas: field 1 = PR number, field 2 = branch name, field 3 = worktree path (everything between the second and third commas), field 4 = signals (everything after the third comma; may be empty).
+You will be given a PR number, branch name, worktree path, and optional signals in `$ARGUMENTS`. Arguments are comma-separated to handle paths with spaces: `<PR number>,<branch name>,<worktree path>[,<signals>]`. Example: `42,fix/auth-timeout,/Users/me/projects/my repo/worktrees/pr-42,REVIEWS_CERTIFIED`. Parse by splitting on the first three commas: field 1 = PR number, field 2 = branch name, field 3 = worktree path (everything between the second and third commas), field 4 = signals string (the entire remainder after the third comma; may be empty). Treat the signals field as a set of tokens — to check for a signal, scan whether the string contains the token, not whether it equals the token exactly. A signals string of `REVIEWS_CERTIFIED,EXTRA` still contains `REVIEWS_CERTIFIED`.
 
 ## 1. Pre-merge checklist (verify all — do not skip any)
 
@@ -41,11 +41,11 @@ gh pr view <n> --json reviews
 ```
 Group reviews by reviewer and take the latest review per reviewer. Check whether any reviewer's latest review is `REQUEST_CHANGES`. If yes, **REFUSE** — even if another reviewer approved. Do not scan the flat reviews array; superseded reviews should be ignored if the same reviewer later submitted APPROVED.
 
-Read the project's required review count from `CONTRIBUTING.md` or the project rules (discovered in pr-loop §0). Default to 1 if not specified. Confirm that the required number of approved reviews exist with no pending `REQUEST_CHANGES`. If reviews are missing or a change request is unresolved: **REFUSE**.
+Read the project's required review count from `CONTRIBUTING.md` or the repository branch protection rules (`gh api repos/{owner}/{repo}/branches/{branch}/protection`). Default to 1 if not specified. Confirm that the required number of approved reviews exist with no pending `REQUEST_CHANGES`. If reviews are missing or a change request is unresolved: **REFUSE**. Note: when invoked via pr-loop, the only reviews present may be the two audit comments posted by the orchestrator under its own GitHub identity (not real reviewer approvals). Do not count these toward the review requirement — check that the count of APPROVED reviews from accounts other than the PR author meets the threshold, or rely solely on the `REVIEWS_CERTIFIED` signal for internal certification when branch protection is not configured.
 
 ### 1d. No new commits since reviews
 
-Get the timestamp of the most recent APPROVED review across all reviewers. Confirm that no commits were pushed to the branch AFTER that timestamp. If new commits exist after the last approval, the reviews are stale: **REFUSE**. (Note: commits pushed to fix earlier review findings, which then triggered a re-review and received fresh approvals, are fine — check against the last approval, not the first.)
+Get the timestamp of the most recent APPROVED review across all reviewers. Confirm that no commits were pushed to the branch AFTER that timestamp. If new commits exist after the last approval, the reviews are stale: **REFUSE**. (Note: commits pushed to fix earlier review findings, which then triggered a re-review and received fresh approvals, are fine — check against the last approval, not the first.) When invoked via pr-loop, the sequencing in step 11 structurally prevents new commits between the orchestrator's audit posts and this merger invocation — but verify anyway, especially in standalone use.
 
 ```
 gh pr view <n> --json commits,reviews
