@@ -68,7 +68,7 @@ Runs exactly what your project requires - tests, linter, type-check, build. All 
 
 ### 5. PR
 - Commit format from your project rules
-- PR body references the issue (`Closes #n`)
+- PR body references the issue using the project's keyword (`Closes #n`, `Fixes #n`, `Resolves #n`, or tracker format from CONTRIBUTING.md)
 - Title per the project's commit format
 
 ### 6. Two independent reviews (parallel)
@@ -89,15 +89,16 @@ Two separate subagents with no shared context with the author:
 Every finding gets addressed - including nits. Nothing is silently dropped. If a reviewer marks something "no change needed," the author either makes the improvement or records the deliberate decision in code/PR comments.
 
 ### 8. Re-review loop
-Both reviewers run again on the updated PR. Loops until:
-- ✅ Zero actionable items
-- ✅ Zero new findings  
-- ✅ Both approve
+Both reviewers run again on the updated PR. The loop exits when:
+- `pr-code-reviewer` returns **APPROVE**
+- `pr-validator` returns **VALIDATED** or **VALIDATED_WITH_PREEXISTING_FAILURES**
+
+MINOR and NIT findings don't block advancement — they get addressed but don't hold up the verdict. The loop continues only if either reviewer returns REQUEST_CHANGES or FAILED.
 
 **Cap: 3 rounds.** If items still surface after round 3, the loop pauses and asks you.
 
 ### 9. CI
-Waits for CI to go green. Retries a failing job once, inspects logs before assuming flakiness, surfaces persistent or environmental failures to the user rather than retrying indefinitely.
+Polls `gh pr checks` every 60 seconds. Hard stop after 30 minutes with a message to the user. Retries a failing job once, inspects logs before assuming flakiness, surfaces persistent or environmental failures rather than retrying indefinitely.
 
 ### 10. Merge
 **Default (safe):** stops at hand-off once CI is green and both reviews are clean. Reports PR link and status. A human merges.
@@ -178,12 +179,31 @@ The author context never reviews or merges. Always.
 
 ---
 
+## Companion skills
+
+`/pr-loop` orchestrates three companion skills. All four files must be installed together:
+
+| Skill | File | Role |
+|---|---|---|
+| `/pr-loop` | `pr-loop.md` | Orchestrator — runs the full pipeline |
+| `/pr-code-reviewer` | `pr-code-reviewer.md` | Structured review: security, correctness, performance, maintainability |
+| `/pr-validator` | `pr-validator.md` | Empirical review: runs gates, probes claims, checks tests |
+| `/pr-merger` | `pr-merger.md` | Re-verifies everything independently before squash-merge (opt-in) |
+
+The reviewers and merger are invoked automatically by `/pr-loop` — you never call them directly.
+
+---
+
 ## Installation
 
-1. Clone this repo or copy `pr-loop.md` into your Claude Code skills directory:
+1. Clone this repo or copy all four skill files into your Claude Code skills directory:
    ```
    ~/.claude/skills/pr-loop.md
+   ~/.claude/skills/pr-code-reviewer.md
+   ~/.claude/skills/pr-validator.md
+   ~/.claude/skills/pr-merger.md
    ```
+   Or drop them into `.claude/skills/` at your project root for project-scoped installation.
 
 2. In any project with Claude Code, type:
    ```

@@ -37,11 +37,10 @@ For each work item:
 
 1. **Pre-flight.** If the issue is ambiguous about scope, acceptance criteria, or
    approach, STOP and ask the user to clarify before writing any code.
-2. **Ground.** Re-read the issue/spec (`gh issue view <n>` if it's an issue) and
-   the actual code paths it touches before writing anything.
+2. **Ground.** First, verify GitHub connectivity: run `gh auth status` and `gh repo view`. If either fails, STOP immediately and report: "GitHub CLI is not authenticated or this repository is not hosted on GitHub. /pr-loop requires the gh CLI with GitHub access." Do not proceed. Then re-read the issue/spec (`gh issue view <n>` if it's an issue) and the actual code paths it touches before writing anything.
 3. **Branch.** Create a fresh git worktree on a meaningfully-named branch off the
    default branch (per the project's convention). Never push an auto-generated
-   slug branch name.
+   slug branch name. Capture and record the worktree path immediately after creating it. You will need this path when passing arguments to the review subagents in step 8. Do not reconstruct it by convention later — record the exact path returned or used.
 4. **Conflict check.** Verify the fresh branch merges cleanly before writing any code:
    ```
    git fetch origin
@@ -58,7 +57,7 @@ For each work item:
 6. **Local gates.** Run exactly what the project requires (e.g. tests + linter,
    plus a build step if relevant files changed). All green before pushing.
 7. **Push & open a PR.** Use the project's commit format.
-   Reference the issue (`Closes #n`) in the PR body. Title per the project's commit format.
+   Reference the issue using the keyword format the project uses (discovered in §0 — common formats include `Closes #n`, `Fixes #n`, `Resolves #n`). If the project uses a non-GitHub issue tracker (Jira, Linear), use the format documented in `CONTRIBUTING.md`. Title per the project's commit format.
 8. **Two independent reviews.** Spawn TWO separate review subagents in parallel
    (separate contexts from you, the author):
    - **pr-code-reviewer** — structured security/correctness/perf/maintainability review;
@@ -71,14 +70,11 @@ For each work item:
 9. **Fix every finding — including nits.** Nothing is ignored. For a finding a
    reviewer marks "no change needed," either make the clean improvement or record
    the deliberate decision in code/PR; do not silently drop it.
-10. **Re-review.** Re-run BOTH review agents on the updated PR until both return a
-    clean approve with zero actionable items and no new findings. **Cap: 3 rounds.**
+10. **Re-review.** Re-run BOTH review agents on the updated PR. The exit condition for the review loop is both subagents returning APPROVE (from pr-code-reviewer) and VALIDATED or VALIDATED_WITH_PREEXISTING_FAILURES (from pr-validator). A verdict of APPROVE may still contain MINOR or NIT findings — these should be addressed but do not prevent advancing. The re-review loop continues only if either subagent returns REQUEST_CHANGES or FAILED. **Cap: 3 rounds.**
     If items still surface after 3 rounds, PAUSE and ask the user.
-11. **CI.** Wait for CI to go green. If CI fails, retry the failing job once. If it
-    fails again, inspect the logs before assuming flakiness; fix real failures. If
-    a job fails a second time and the failure looks environmental (infra error,
-    unrelated test, network timeout), STOP and surface it to the user rather than
-    retrying indefinitely.
+
+    Once both reviewers have returned a clean verdict, post their approvals to GitHub: run `gh pr review <n> --approve --body 'pr-code-reviewer: APPROVE'` and `gh pr review <n> --approve --body 'pr-validator: VALIDATED'`. Then, when invoking pr-merger, append `REVIEWS_CERTIFIED` to the arguments string.
+11. **CI.** Wait for CI to go green. Poll CI status with `gh pr checks <n>` every 60 seconds. After 30 minutes of polling with no green result, STOP and surface to the user: "CI has not completed after 30 minutes. Check the CI system directly." If CI fails, retry the failing job once. If it fails again, inspect the logs before assuming flakiness; fix real failures. If a job fails a second time and the failure looks environmental (infra error, unrelated test, network timeout), STOP and surface it to the user rather than retrying indefinitely.
 12. **Merge step — depends on merge authority (see §2).**
 13. **Advance.** Update the local default branch (`git pull --ff-only`), confirm the
     merge landed and the issue closed, remove any stray worktrees. Search for
@@ -96,11 +92,7 @@ default unless the project's rules AND the user both permit otherwise.
 **Opt-in: `autonomous-merge`.** Only if BOTH (a) the user explicitly requested
 autonomous merge (e.g. the `autonomous-merge` token in `$ARGUMENTS`, or a clear
 instruction) AND (b) the project permits agent merge — spawn a SEPARATE
-**pr-merger** agent (a third context). It independently re-verifies the gate (CI
-green, mergeable CLEAN, both reviews clean), squash-merges using the project's
-mechanics, cleans up the branch/worktree, and reports the squash SHA. If it
-refuses or the gate fails, STOP and surface it. The authoring context never merges
-its own PR.
+**pr-merger** agent (a third context). Pass arguments as comma-separated values: `<PR number>,<branch name>,<worktree path>,REVIEWS_CERTIFIED` (the `REVIEWS_CERTIFIED` signal must only be appended after both review agents have returned a clean verdict and their approvals have been posted to GitHub as described in step 10). It independently re-verifies the gate (CI green, mergeable CLEAN, both reviews clean), squash-merges using the project's mechanics, cleans up the branch/worktree, and reports the squash SHA. If it refuses or the gate fails, STOP and surface it. The authoring context never merges its own PR.
 
 ## 3. Three-context separation (always)
 
