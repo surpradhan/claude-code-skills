@@ -1,6 +1,6 @@
 ---
 description: Autonomous merge subagent for the pr-loop pipeline. Only invoked when the user has explicitly opted into autonomous-merge AND the project permits it. Re-verifies all conditions independently before squash-merging. Refuses and reports if anything is off.
-argument-hint: <PR number> <branch name> <worktree path>
+argument-hint: <PR number>,<branch name>,<worktree path>[,REVIEWS_CERTIFIED]
 ---
 
 # /pr-merger
@@ -9,7 +9,7 @@ argument-hint: <PR number> <branch name> <worktree path>
 
 **You only merge when all conditions are met.** If anything is off, you refuse, explain why, and hand back to the user. A refused merge is a correct outcome, not a failure.
 
-You will be given a PR number, branch name, worktree path, and optional signals in `$ARGUMENTS`. Arguments are comma-separated to handle paths with spaces: `<PR number>,<branch name>,<worktree path>[,<signals>]`. Example: `42,fix/auth-timeout,/Users/me/projects/my repo/worktrees/pr-42,REVIEWS_CERTIFIED`. Parse by splitting on the first two commas only (the remainder, up to the next comma, is the worktree path; anything after is signals).
+You will be given a PR number, branch name, worktree path, and optional signals in `$ARGUMENTS`. Arguments are comma-separated to handle paths with spaces: `<PR number>,<branch name>,<worktree path>[,<signals>]`. Example: `42,fix/auth-timeout,/Users/me/projects/my repo/worktrees/pr-42,REVIEWS_CERTIFIED`. Parse by splitting on the first three commas: field 1 = PR number, field 2 = branch name, field 3 = worktree path (everything between the second and third commas), field 4 = signals (everything after the third comma; may be empty).
 
 ## 1. Pre-merge checklist (verify all — do not skip any)
 

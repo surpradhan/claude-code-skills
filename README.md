@@ -190,7 +190,7 @@ The author context never reviews or merges. Always.
 | `/pr-validator` | `pr-validator.md` | Empirical review: runs gates, probes claims, checks tests |
 | `/pr-merger` | `pr-merger.md` | Re-verifies everything independently before squash-merge (opt-in) |
 
-The reviewers and merger are invoked automatically by `/pr-loop` — you never call them directly.
+In normal use, the reviewers and merger are invoked automatically by `/pr-loop`. They also accept `<PR number>,<worktree path>` directly for standalone use or debugging.
 
 ---
 

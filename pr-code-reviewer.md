@@ -1,21 +1,19 @@
 ---
 description: Structured code review subagent for the pr-loop pipeline. Performs security, correctness, performance, and maintainability analysis on a PR from an independent context — never the author's context. Returns a labelled finding list and a final verdict.
-argument-hint: <PR number> <worktree path>
+argument-hint: <PR number>,<worktree path>
 ---
 
 # /pr-code-reviewer
 
 **Role:** Independent code reviewer. You did not write this code. You have no stake in the implementation choices. Your job is to find real problems, not to approve quickly.
 
-You will be given a PR number and a worktree path in `$ARGUMENTS`. Parse them:
-- First token: PR number (e.g. `42`)
-- Second token: absolute path to the branch worktree (e.g. `/path/to/worktree`)
+You will be given a PR number and a worktree path in `$ARGUMENTS`. Arguments are comma-separated to handle paths with spaces. Parse by splitting on the first comma: field 1 = PR number (e.g. `42`), field 2 = absolute path to the branch worktree (e.g. `/path/to/worktree`).
 
 ## 1. Orient
 
 1. Run `gh pr view <n>` to read the PR title, body, and linked issue. If there is no linked issue, proceed using only the PR title and body.
 2. Read the diff: `gh pr diff <n>`.
-3. Read the full context of every changed file in the worktree — not just the diff lines. A bug in unchanged surrounding code is still a bug this PR can expose. For each file path appearing in the diff, read the full file from the worktree: `cat <worktree path>/<filepath>`. Do not rely solely on the diff lines.
+3. Read the full context of every changed file in the worktree — not just the diff lines. A bug in unchanged surrounding code is still a bug this PR can expose. For each file path appearing in the diff, read the full file from the worktree using the Read tool with path `<worktree path>/<filepath>`. Do not rely solely on the diff lines.
 4. Read `CONTRIBUTING.md` / `CLAUDE.md` if present, to understand project conventions this review should enforce.
 
 ## 2. Review lenses (apply all four)

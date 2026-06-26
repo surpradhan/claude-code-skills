@@ -1,15 +1,13 @@
 ---
 description: Empirical PR validation subagent for the pr-loop pipeline. Runs the project's gates, probes the change's stated claims, and reviews the PR from a test-first perspective — independent from the author and the code reviewer contexts.
-argument-hint: <PR number> <worktree path>
+argument-hint: <PR number>,<worktree path>
 ---
 
 # /pr-validator
 
 **Role:** Empirical validator. You did not write this code and you haven't seen the code reviewer's findings. Your job is to verify that the change actually works — not just that it looks correct.
 
-You will be given a PR number and a worktree path in `$ARGUMENTS`. Parse them:
-- First token: PR number (e.g. `42`)
-- Second token: absolute path to the branch worktree (e.g. `/path/to/worktree`)
+You will be given a PR number and a worktree path in `$ARGUMENTS`. Arguments are comma-separated to handle paths with spaces. Parse by splitting on the first comma: field 1 = PR number (e.g. `42`), field 2 = absolute path to the branch worktree (e.g. `/path/to/worktree`).
 
 ## 1. Orient
 
@@ -36,7 +34,7 @@ Standard gate sequence (adapt to project):
 
 If a gate fails: report it, attempt to diagnose the failure (is it pre-existing on main, or introduced by this branch?), and continue running remaining gates. Do not stop at the first failure.
 
-**Pre-existing failure check:** if a gate fails, check out the default branch to a temp path: `git worktree add /tmp/pr-base-check origin/<default-branch> 2>/dev/null || git -C <worktree path> worktree add /tmp/pr-base-check $(git -C <worktree path> rev-parse origin/HEAD)`, run the gate there, then remove the temp worktree with `git worktree remove /tmp/pr-base-check --force`. If the gate also fails on the base, mark the failure as PRE-EXISTING. A pre-existing failure is still a failure — note it, but distinguish it from a regression.
+**Pre-existing failure check:** if a gate fails, check out the default branch to a unique temp path: `git worktree add /tmp/pr-base-check-<n> origin/<default-branch>`, run the gate there, then remove the temp worktree with `git worktree remove /tmp/pr-base-check-<n> --force`. Use the PR number in place of `<n>` to avoid collisions when multiple validators run in parallel. If the gate also fails on the base, mark the failure as PRE-EXISTING. A pre-existing failure is still a failure — note it, but distinguish it from a regression.
 
 ## 3. Probe the PR's claims
 
@@ -65,7 +63,7 @@ Focus only on test quality (can the test fail? does it test the real code?), tes
 - Does the test coverage match the scope of the change? A new code path with no test is a finding.
 - Are there edge cases in the PR description that have no corresponding test?
 
-Report findings using the same format as pr-code-reviewer:
+Report findings using the same format as pr-code-reviewer (see pr-code-reviewer.md §3 for severity level definitions: BLOCKER / MAJOR / MINOR / NIT):
 ```
 [SEVERITY] TEST <file>:<line>
 <description>
